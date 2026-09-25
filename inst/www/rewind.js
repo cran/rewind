@@ -63,6 +63,20 @@
 
   // --------------------------------------------------------------- render
 
+  // The server sends each time as milliseconds since the epoch. Format it
+  // here, in the viewer's own time zone, as HH:MM:SS. The format is built by
+  // hand and not with toLocaleTimeString(), which gives "1:33:57 PM" in some
+  // locales and would change the width of the rail.
+  function formatTime(ms) {
+    if (typeof ms !== "number" || !isFinite(ms)) return "";
+    var d = new Date(ms);
+    function pad(n) {
+      return (n < 10 ? "0" : "") + n;
+    }
+    return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" +
+      pad(d.getSeconds());
+  }
+
   function renderButtons() {
     var undos = document.querySelectorAll(".rewind-undo");
     var redos = document.querySelectorAll(".rewind-redo");
@@ -97,16 +111,36 @@
 
         var time = document.createElement("span");
         time.className = "rewind-step-time";
-        time.textContent = e.time;
+        time.textContent = formatTime(e.time);
 
         li.appendChild(label);
         li.appendChild(time);
         rail.appendChild(li);
       }
 
+      // Keep the current step in view, but move the rail and nothing else.
+      //
+      // Do not use scrollIntoView() here. It scrolls every scrollable
+      // ancestor of the element, and not only the nearest one. When the
+      // rail sits in a sidebar, that also scrolls the sidebar and the
+      // page. The application then appears to scroll by itself each time
+      // the history changes, which reads as a fault. The option
+      // block: "nearest" limits how far each ancestor moves. It does not
+      // stop them moving.
       var current = rail.querySelector(".is-current");
-      if (current && current.scrollIntoView) {
-        current.scrollIntoView({ block: "nearest" });
+      if (current) {
+        // Measure with getBoundingClientRect and not offsetTop. The rail
+        // is not a positioned element, so it is not the offsetParent of
+        // the step, and offsetTop would be relative to something else.
+        var top = current.getBoundingClientRect().top -
+          rail.getBoundingClientRect().top + rail.scrollTop;
+        var bottom = top + current.offsetHeight;
+
+        if (top < rail.scrollTop) {
+          rail.scrollTop = top;
+        } else if (bottom > rail.scrollTop + rail.clientHeight) {
+          rail.scrollTop = bottom - rail.clientHeight;
+        }
       }
     }
   }

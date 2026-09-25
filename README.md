@@ -1,4 +1,9 @@
-# rewind
+# rewind <img src="man/figures/logo.png" align="right" height="139" alt="rewind logo" />
+
+<!-- badges: start -->
+[![CRAN status](https://www.r-pkg.org/badges/version/rewind)](https://CRAN.R-project.org/package=rewind)
+[![R-CMD-check](https://github.com/tenmeh/rewind/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tenmeh/rewind/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
 
 **Undo and redo for Shiny applications.**
 
@@ -32,7 +37,28 @@ shinyApp(ui, server)
 `Ctrl+Z` now moves backwards through the filter choices of the user.
 `Ctrl+Shift+Z` moves forwards.
 
+## Keyboard shortcuts
+
+| Keys | Action |
+|---|---|
+| `Ctrl` + `Z` (`Cmd` + `Z` on macOS) | Undo |
+| `Ctrl` + `Shift` + `Z` (`Cmd` + `Shift` + `Z` on macOS) | Redo |
+| `Ctrl` + `Y` | Redo |
+
+There are two shortcuts for redo. `Ctrl` + `Y` is the usual one on
+Windows. `Cmd` + `Shift` + `Z` is the usual one on macOS.
+
+The shortcuts do nothing while the user types in a text field. The text
+undo of the browser thus continues to work. Set
+`rewind_enable(shortcuts = FALSE)` to turn the shortcuts off.
+
 ## Installation
+
+```r
+install.packages("rewind")
+```
+
+To get the development version from GitHub:
 
 ```r
 # install.packages("remotes")

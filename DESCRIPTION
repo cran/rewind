@@ -1,7 +1,7 @@
 Package: rewind
 Type: Package
 Title: Undo and Redo for 'Shiny' Applications
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: person(
     given = "Tanmay",
     family = "Chanda",
@@ -26,8 +26,8 @@ BugReports: https://github.com/tenmeh/rewind/issues
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
 NeedsCompilation: no
-Packaged: 2026-08-20 03:02:42 UTC; tchan
+Packaged: 2026-09-25 12:49:16 UTC; tchan
 Author: Tanmay Chanda [aut, cre, cph]
 Maintainer: Tanmay Chanda <tanmaychanda96@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-08-21 13:50:08 UTC
+Date/Publication: 2026-09-25 14:40:10 UTC

@@ -1,3 +1,76 @@
+# rewind 0.3.0
+
+This release goes to CRAN. Version 0.2.1 was released on GitHub only, so
+an update from 0.2.0 on CRAN brings the changes of 0.2.1 below as well.
+
+* New `rewind_diff()`. It shows what changed between two steps, and not only
+  which names changed. [rewind_history()] gives a label such as
+  `"region, year"`; `rewind_diff()` gives one row for each value, with the
+  value before, the value after, and a short description such as
+  `"North -> South"`. The `old` and `new` columns are list columns, so a
+  value of any type survives, including a date range, a multiple selection
+  or a whole data frame. The result depends on the history, so it works
+  inside `render*()` and `observe()`.
+
+  It is not an audit trail, and the documents say so. The history is in the
+  memory of one session, it drops the oldest entries when it passes `depth`,
+  and it drops the steps in front of the position after a change. Write a
+  record for an inspection as each change occurs, and keep it elsewhere.
+* The history rail no longer scrolls the page or the sidebar that holds it.
+  It kept the current step in view with `scrollIntoView()`, which scrolls
+  every scrollable ancestor of the element and not only the nearest one. In
+  a layout that puts `rewind_ui()` in a sidebar, every change to the history
+  scrolled that sidebar, so the application appeared to scroll by itself.
+  The rail now sets its own `scrollTop`, and moves nothing else.
+* Fixed: undo, redo and the rail did nothing when `rewind_enable()` was
+  called inside a `moduleServer()`. The browser sends the global input ids
+  `rewind_undo`, `rewind_redo` and `rewind_jump`, but inside a module
+  `rewind_enable()` watched the namespaced ids. Capture still worked, so the
+  rail filled up, but no button, shortcut or rail click reached the history.
+  `rewind_enable()` now reads these inputs from the root session.
+* Fixed: the rail showed each time in UTC, and not in the viewer's time
+  zone. The server now sends the moment, and the browser formats it with
+  its own clock. The format is still `HH:MM:SS`. The `time` column of
+  `rewind_history()` is unchanged.
+* `rewind_enable()` and `rewind_step()` now refuse `NA`, `NaN` and `Inf`
+  in `coalesce_ms`, `restore_timeout` and `hold_ms`, with a message that
+  names the argument. `NA` gave "missing value where TRUE/FALSE needed".
+  `Inf` was accepted and then did harm with no message: in `coalesce_ms` it
+  stopped the history from recording anything. `hold_ms` was not checked
+  at all before.
+* `rewind_diff()` now refuses a position that is not a whole number, such as
+  `2.7`. It truncated it to `2` before.
+
+# rewind 0.2.1
+
+* `rewind_enable()` takes a `restore_timeout` argument, in seconds. It sets
+  how long `rewind` waits for the browser to finish a restore. The value
+  was fixed at 2 seconds before, which is enough on a fast connection but
+  not always on a slow one. If the limit is too short, capture starts again
+  while the browser is still applying the restore, and a partial state
+  becomes a history entry that the user never made.
+* `rewind` no longer drops a data frame of the user that has the same four
+  column names as the value of a `fileInput()`. It now examines the column
+  types as well as the names. Such a value was dropped from the history
+  before, with no message.
+* `rewind_buttons()` takes a `button_class` argument. It adds CSS classes to
+  the two buttons. Use it for a Bootstrap variant such as `"btn-primary"` or
+  `"btn-outline-secondary"`, and for a size such as `"btn-sm"`. The `class`
+  argument continues to hold classes for the container element only, so
+  there was no way to reach the buttons before.
+* The arrows on the buttons are now SVG. They were the HTML entities
+  `&#8630;` and `&#8631;`, which come from the font of the browser and thus
+  have a different weight and size on each system. The SVG arrows use
+  `currentColor` and a size in `em`. They thus follow the colour and the
+  size of the button, including with `btn-sm`, `btn-lg`, an outline variant
+  and a dark theme.
+* The redo button now says "Redo (Ctrl+Shift+Z or Ctrl+Y)" when the pointer
+  rests on it. It said only "Redo (Ctrl+Shift+Z)" before. `Ctrl` + `Y` has
+  always done a redo, but the button did not say so.
+* The description of the `shortcuts` argument of `rewind_enable()` now
+  lists the three shortcuts, and says which one belongs to which system.
+* The demo application now names the redo shortcut in its hint.
+
 # rewind 0.2.0
 
 * `rewind_disable()` stops undo and redo for a session completely. It

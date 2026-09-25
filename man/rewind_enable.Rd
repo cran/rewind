@@ -10,6 +10,7 @@ rewind_enable(
   exclude = NULL,
   depth = 50L,
   coalesce_ms = 400L,
+  restore_timeout = 2,
   shortcuts = TRUE,
   verbose = FALSE
 )
@@ -29,10 +30,29 @@ removes the oldest entries first.}
 \item{coalesce_ms}{The quiet period in milliseconds before \code{rewind}
 writes a change to the history. Increase it to group more changes.}
 
-\item{shortcuts}{Set to \code{TRUE} to bind \code{Ctrl}/\code{Cmd} + \code{Z} and
-\code{Ctrl}/\code{Cmd} + \code{Shift} + \code{Z} (and \code{Ctrl} + \code{Y}) in the browser. The
-shortcuts do nothing while the user types in a text field. The text
-undo of the browser thus continues to work.}
+\item{restore_timeout}{The time in seconds that \code{rewind} waits for the
+browser to finish a restore. The default of 2 suits a fast
+connection.
+
+Increase it for an application on a slow connection, such as one
+behind a VPN or on a mobile network. If the limit is too short,
+capture starts again while the browser is still applying the restore,
+and a partial state becomes a history entry that the user never made.
+
+Do not increase it more than you need. If a restore never returns,
+\code{rewind} ignores the changes of the user until this limit ends.}
+
+\item{shortcuts}{Set to \code{TRUE} to bind the keyboard shortcuts in the
+browser. There are three:
+\itemize{
+\item \code{Ctrl} + \code{Z} (\code{Cmd} + \code{Z} on macOS) does an undo;
+\item \code{Ctrl} + \code{Shift} + \code{Z} (\code{Cmd} + \code{Shift} + \code{Z} on macOS) does a redo;
+\item \code{Ctrl} + \code{Y} also does a redo. This is the usual redo shortcut on
+Windows.
+}
+
+The shortcuts do nothing while the user types in a text field. The
+text undo of the browser thus continues to work.}
 
 \item{verbose}{Set to \code{TRUE} to show messages about what \code{rewind}
 captures and restores. This is useful during development.}

@@ -49,10 +49,27 @@
 #'   removes the oldest entries first.
 #' @param coalesce_ms The quiet period in milliseconds before `rewind`
 #'   writes a change to the history. Increase it to group more changes.
-#' @param shortcuts Set to `TRUE` to bind `Ctrl`/`Cmd` + `Z` and
-#'   `Ctrl`/`Cmd` + `Shift` + `Z` (and `Ctrl` + `Y`) in the browser. The
-#'   shortcuts do nothing while the user types in a text field. The text
-#'   undo of the browser thus continues to work.
+#' @param restore_timeout The time in seconds that `rewind` waits for the
+#'   browser to finish a restore. The default of 2 suits a fast
+#'   connection.
+#'
+#'   Increase it for an application on a slow connection, such as one
+#'   behind a VPN or on a mobile network. If the limit is too short,
+#'   capture starts again while the browser is still applying the restore,
+#'   and a partial state becomes a history entry that the user never made.
+#'
+#'   Do not increase it more than you need. If a restore never returns,
+#'   `rewind` ignores the changes of the user until this limit ends.
+#' @param shortcuts Set to `TRUE` to bind the keyboard shortcuts in the
+#'   browser. There are three:
+#'
+#'   * `Ctrl` + `Z` (`Cmd` + `Z` on macOS) does an undo;
+#'   * `Ctrl` + `Shift` + `Z` (`Cmd` + `Shift` + `Z` on macOS) does a redo;
+#'   * `Ctrl` + `Y` also does a redo. This is the usual redo shortcut on
+#'     Windows.
+#'
+#'   The shortcuts do nothing while the user types in a text field. The
+#'   text undo of the browser thus continues to work.
 #' @param verbose Set to `TRUE` to show messages about what `rewind`
 #'   captures and restores. This is useful during development.
 #'
@@ -85,6 +102,7 @@ rewind_enable <- function(session = shiny::getDefaultReactiveDomain(),
                           exclude = NULL,
                           depth = 50L,
                           coalesce_ms = 400L,
+                          restore_timeout = 2,
                           shortcuts = TRUE,
                           verbose = FALSE) {
   session <- require_session(session)
@@ -95,9 +113,9 @@ rewind_enable <- function(session = shiny::getDefaultReactiveDomain(),
   if (!is.null(exclude) && !is.character(exclude)) {
     stop("`exclude` must be a character vector or NULL.", call. = FALSE)
   }
-  if (!is.numeric(coalesce_ms) || length(coalesce_ms) != 1L || coalesce_ms < 0) {
-    stop("`coalesce_ms` must be a single non-negative number.", call. = FALSE)
-  }
+  # check_number() rejects NA and Inf as well. Refer to R/utils.R.
+  check_number(coalesce_ms, "coalesce_ms", min = 0, inclusive = TRUE)
+  check_number(restore_timeout, "restore_timeout", min = 0, inclusive = FALSE)
 
   if (!is.null(session$userData$.rewind)) {
     warning("rewind is already enabled for this session; ignoring.",
@@ -106,12 +124,13 @@ rewind_enable <- function(session = shiny::getDefaultReactiveDomain(),
   }
 
   ctrl <- RewindController$new(
-    session     = session,
-    inputs      = inputs,
-    exclude     = exclude,
-    depth       = depth,
-    coalesce_ms = coalesce_ms,
-    verbose     = verbose
+    session         = session,
+    inputs          = inputs,
+    exclude         = exclude,
+    depth           = depth,
+    coalesce_ms     = coalesce_ms,
+    restore_timeout = restore_timeout,
+    verbose         = verbose
   )
   session$userData$.rewind <- ctrl
 
@@ -169,11 +188,24 @@ rewind_enable <- function(session = shiny::getDefaultReactiveDomain(),
     }
   }, domain = session)
 
-  obs_undo <- shiny::observeEvent(session$input$rewind_undo, ctrl$undo(),
+  # The buttons, the shortcuts and the rail. Read these inputs from the root
+  # session, and not from `session`.
+  #
+  # rewind.js sends them under the global ids rewind_undo, rewind_redo and
+  # rewind_jump. rewind_buttons() has no id, so the ids stay global wherever
+  # the buttons are placed. Inside a module, session$input$rewind_undo reads
+  # the namespaced id "mymod-rewind_undo", which nothing ever sets. Capture
+  # still worked, so the rail filled up, but no undo ever reached the
+  # controller. A session has only one history (refer to the Modules
+  # section above), so one set of global ids is correct.
+  root <- session$rootScope()
+
+  obs_undo <- shiny::observeEvent(root$input$rewind_undo, ctrl$undo(),
                                   ignoreInit = TRUE, domain = session)
-  obs_redo <- shiny::observeEvent(session$input$rewind_redo, ctrl$redo(),
+  obs_redo <- shiny::observeEvent(root$input$rewind_redo, ctrl$redo(),
                                   ignoreInit = TRUE, domain = session)
-  obs_jump <- shiny::observeEvent(session$input$rewind_jump, ctrl$jump(session$input$rewind_jump$index),
+  obs_jump <- shiny::observeEvent(root$input$rewind_jump,
+                                  ctrl$jump(root$input$rewind_jump$index),
                                   ignoreInit = TRUE, domain = session)
 
   ctrl$set_observers(list(obs_capture, obs_coalesce, obs_undo, obs_redo, obs_jump))
@@ -282,6 +314,10 @@ rewind_step <- function(expr,
                         hold_ms = NULL,
                         session = shiny::getDefaultReactiveDomain()) {
   ctrl <- get_controller(session)
+  # Check this before the controller, so a bad value fails the same way
+  # whether rewind is enabled or not. An NA here used to be accepted, and
+  # then failed later inside the capture observer.
+  if (!is.null(hold_ms)) check_number(hold_ms, "hold_ms", min = 0, inclusive = TRUE)
   if (!is.null(ctrl)) ctrl$open_step(label = label, hold_ms = hold_ms)
   invisible(expr)
 }
